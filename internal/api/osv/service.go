@@ -29,7 +29,6 @@ func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
 				Ecosystem: strptr("GIT"),
 			},
 		})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to call API: %w", err)
 	}
