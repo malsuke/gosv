@@ -25,3 +25,7 @@ func NewClientFromGitHubClient(client *github.Client) *Client {
 	}
 	return &Client{github: client}
 }
+
+func (c *Client) GetGithubClient() *github.Client {
+	return c.github
+}
