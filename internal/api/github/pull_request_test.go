@@ -2,7 +2,6 @@ package gh
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -42,7 +41,26 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 				if r.URL.Path != expectedPath {
 					t.Errorf("Request path = %q, want %q", r.URL.Path, expectedPath)
 				}
-				fmt.Fprint(w, `[{"number": 123}]`)
+
+				prNumber := 123
+				repoID := int64(12345)
+
+				prs := []*github.PullRequest{
+					{
+						Number: &prNumber,
+						Base: &github.PullRequestBranch{
+							Repo: &github.Repository{
+								ID: &repoID,
+							},
+						},
+					},
+				}
+				jsonBytes, err := json.Marshal(prs)
+				if err != nil {
+					t.Fatalf("failed to marshal test data: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(jsonBytes)
 			},
 			wantPRID: 123,
 			wantErr:  false,
@@ -52,7 +70,13 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			repoURL:    mustParseURL("https://github.com/owner/repo"),
 			commitHash: "fedcba654321",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, `[]`)
+				prs := []*github.PullRequest{}
+				jsonBytes, err := json.Marshal(prs)
+				if err != nil {
+					t.Fatalf("failed to marshal test data: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(jsonBytes)
 			},
 			wantPRID:      0,
 			wantErr:       true,
@@ -111,6 +135,76 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			wantPRID: 13974,
 			wantErr:  false,
 		},
+		{
+			name:       "multiple pull requests - returns first one",
+			repoURL:    mustParseURL("https://github.com/owner/repo"),
+			commitHash: "multiple123456",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				prNumber1 := 100
+				prNumber2 := 200
+				repoID := int64(12345)
+
+				prs := []*github.PullRequest{
+					{
+						Number: &prNumber1,
+						Base: &github.PullRequestBranch{
+							Repo: &github.Repository{
+								ID: &repoID,
+							},
+						},
+					},
+					{
+						Number: &prNumber2,
+						Base: &github.PullRequestBranch{
+							Repo: &github.Repository{
+								ID: &repoID,
+							},
+						},
+					},
+				}
+				jsonBytes, err := json.Marshal(prs)
+				if err != nil {
+					t.Fatalf("failed to marshal test data: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(jsonBytes)
+			},
+			wantPRID: 100,
+			wantErr:  false,
+		},
+		{
+			name:       "repository with .git suffix",
+			repoURL:    mustParseURL("https://github.com/owner/repo.git"),
+			commitHash: "commit123456",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				expectedPath := "/repos/owner/repo/commits/commit123456/pulls"
+				if r.URL.Path != expectedPath {
+					t.Errorf("Request path = %q, want %q", r.URL.Path, expectedPath)
+				}
+
+				prNumber := 999
+				repoID := int64(12345)
+
+				prs := []*github.PullRequest{
+					{
+						Number: &prNumber,
+						Base: &github.PullRequestBranch{
+							Repo: &github.Repository{
+								ID: &repoID,
+							},
+						},
+					},
+				}
+				jsonBytes, err := json.Marshal(prs)
+				if err != nil {
+					t.Fatalf("failed to marshal test data: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(jsonBytes)
+			},
+			wantPRID: 999,
+			wantErr:  false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -122,11 +216,11 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 				defer server.Close()
 
 				client = github.NewClient(server.Client())
-				url, err := url.Parse(server.URL + "/")
+				baseURL, err := url.Parse(server.URL + "/")
 				if err != nil {
 					t.Fatalf("Failed to parse server URL: %v", err)
 				}
-				client.BaseURL = url
+				client.BaseURL = baseURL
 			} else {
 				client = github.NewClient(nil)
 			}
@@ -140,6 +234,7 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 				if !strings.Contains(err.Error(), tt.wantErrString) {
 					t.Errorf("GetPullRequestIDFromCommitHash() error = %q, want to contain %q", err.Error(), tt.wantErrString)
 				}
+				return
 			}
 			if prID != tt.wantPRID {
 				t.Errorf("GetPullRequestIDFromCommitHash() = %v, want %v", prID, tt.wantPRID)

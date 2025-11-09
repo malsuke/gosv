@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/malsuke/govs/internal/pkg/utils"
+	"github.com/malsuke/govs/internal/misc/cve"
 )
 
 func strptr(s string) *string {
@@ -44,7 +44,7 @@ func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
 
 	cveList := make([]string, 0, len(*vulns))
 	for _, vuln := range *vulns {
-		if vuln.Id != nil && utils.IsValidCVEFormat(*vuln.Id) {
+		if vuln.Id != nil && cve.IsValidCVEFormat(*vuln.Id) {
 			cveList = append(cveList, *vuln.Id)
 			continue
 		}
@@ -63,7 +63,7 @@ func extractCVEFromAliases(aliases *[]string) string {
 		return ""
 	}
 	for _, alias := range *aliases {
-		if utils.IsValidCVEFormat(alias) {
+		if cve.IsValidCVEFormat(alias) {
 			return alias
 		}
 	}

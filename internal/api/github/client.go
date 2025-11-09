@@ -4,9 +4,18 @@ import (
 	"github.com/google/go-github/v77/github"
 )
 
-func NewClientWrapper(token string) *github.Client {
+type Client struct {
+	Client *github.Client
+}
+
+func NewClientWrapper(token string) *Client {
 	if token == "" {
-		return github.NewClient(nil)
+		return &Client{
+			Client: github.NewClient(nil),
+		}
 	}
-	return github.NewClient(nil).WithAuthToken(token)
+
+	return &Client{
+		Client: github.NewClient(nil).WithAuthToken(token),
+	}
 }
