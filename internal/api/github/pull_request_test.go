@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/google/go-github/v77/github"
 	"github.com/stretchr/testify/assert"
@@ -272,5 +273,126 @@ func TestClientGetPullRequestNumberByCommit(t *testing.T) {
 		_, err := client.GetPullRequestNumberByCommit(ctx, repo, "hash")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "github client is not configured")
+	})
+}
+
+func TestClientSearchMergedPullRequests(t *testing.T) {
+	ctx := context.Background()
+	repo := Repository{Owner: "owner", Name: "repo"}
+	start := time.Date(2025, 10, 1, 10, 0, 0, 0, time.UTC)
+	end := time.Date(2025, 11, 8, 12, 0, 0, 0, time.UTC)
+
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/search/issues", r.URL.Path)
+			assert.Equal(
+				t,
+				"repo:owner/repo is:pr is:merged merged:2025-10-01T10:00:00Z..2025-11-08T12:00:00Z",
+				r.URL.Query().Get("q"),
+			)
+
+			resp := github.IssuesSearchResult{
+				Total: github.Int(1),
+				Issues: []*github.Issue{
+					{
+						Number: github.Int(123),
+						Title:  github.String("Merged PR"),
+					},
+				},
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		items, err := NewClientFromGitHubClient(client).
+			SearchMergedPullRequests(ctx, repo, start, end)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, 123, items[0].GetNumber())
+		assert.Equal(t, "Merged PR", items[0].GetTitle())
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		_, err = NewClientFromGitHubClient(client).
+			SearchMergedPullRequests(ctx, repo, start, end)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to search merged pull requests")
+	})
+
+	t.Run("nil result", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{}`))
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		items, err := NewClientFromGitHubClient(client).
+			SearchMergedPullRequests(ctx, repo, start, end)
+
+		require.NoError(t, err)
+		assert.Nil(t, items)
+	})
+
+	t.Run("nil context", func(t *testing.T) {
+		client := NewClient("", nil)
+		var nilCtx context.Context
+		_, err := client.SearchMergedPullRequests(nilCtx, repo, start, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "nil context provided")
+	})
+
+	t.Run("nil client", func(t *testing.T) {
+		var client *Client
+		_, err := client.SearchMergedPullRequests(ctx, repo, start, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "github client is not configured")
+	})
+
+	t.Run("invalid repository", func(t *testing.T) {
+		client := NewClient("", nil)
+		_, err := client.SearchMergedPullRequests(ctx, Repository{}, start, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "repository owner and name must be provided")
+	})
+
+	t.Run("missing time range", func(t *testing.T) {
+		client := NewClient("", nil)
+		_, err := client.SearchMergedPullRequests(ctx, repo, time.Time{}, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "time range must be provided")
+	})
+
+	t.Run("end before start", func(t *testing.T) {
+		client := NewClient("", nil)
+		_, err := client.SearchMergedPullRequests(ctx, repo, end, start)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "end time must not be before start time")
 	})
 }
