@@ -5,19 +5,16 @@ import (
 	"fmt"
 
 	"github.com/malsuke/govs/internal/misc/cve"
+	"github.com/malsuke/govs/internal/misc/ptr"
 )
 
-func strptr(s string) *string {
-	return &s
-}
-
-const OSV_API_BASEURL = "https://api.osv.dev"
+var osvAPIBaseURL = "https://api.osv.dev"
 
 /**
  * GitHubリポジトリのURLからCVE番号のリストを取得する
  */
 func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
-	client, err := NewClientWithResponses(OSV_API_BASEURL)
+	client, err := NewClientWithResponses(osvAPIBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
@@ -25,8 +22,8 @@ func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
 	resp, err := client.OSVQueryAffectedWithResponse(context.Background(),
 		OSVQueryAffectedJSONRequestBody{
 			Package: &OsvPackage{
-				Name:      &repoUrl,
-				Ecosystem: strptr("GIT"),
+				Name:      ptr.String(repoUrl),
+				Ecosystem: ptr.String("GIT"),
 			},
 		})
 	if err != nil {
@@ -56,6 +53,31 @@ func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
 	}
 
 	return cveList, nil
+}
+
+func GetVulnerabilityByCVE(cveID string) (*OsvVulnerability, error) {
+	if !cve.IsValidCVEFormat(cveID) {
+		return nil, fmt.Errorf("invalid CVE format: %s", cveID)
+	}
+
+	client, err := NewClientWithResponses(osvAPIBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+
+	resp, err := client.OSVGetVulnByIdWithResponse(context.Background(), cveID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call API: %w", err)
+	}
+
+	if resp.StatusCode() != 200 || resp.JSON200 == nil {
+		if resp.JSONDefault != nil && resp.JSONDefault.Message != nil {
+			return nil, fmt.Errorf("unexpected API response: %s", *resp.JSONDefault.Message)
+		}
+		return nil, fmt.Errorf("unexpected API response: %v", resp.StatusCode())
+	}
+
+	return resp.JSON200, nil
 }
 
 func extractCVEFromAliases(aliases *[]string) string {
