@@ -4,21 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/google/go-github/v77/github"
 )
 
-func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, commitHash string) (int, error) {
-	pathParts := strings.Split(strings.Trim(repoURL.Path, "/"), "/")
-	if len(pathParts) < 2 {
-		return 0, fmt.Errorf("invalid repo URL path: %s", repoURL.Path)
+func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, repo Repository, commitHash string) (int, error) {
+	if ctx == nil {
+		return 0, fmt.Errorf("nil context provided")
+	}
+	if c == nil || c.github == nil {
+		return 0, fmt.Errorf("github client is not configured")
 	}
 
-	owner := pathParts[0]
-	repo := strings.TrimSuffix(pathParts[1], ".git")
-
-	prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), owner, repo, commitHash, nil)
+	prs, _, err := c.github.PullRequests.ListPullRequestsWithCommit(ctx, repo.Owner, repo.Name, commitHash, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to list pull requests with commit: %w", err)
 	}
@@ -28,4 +26,14 @@ func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, comm
 	}
 
 	return prs[0].GetNumber(), nil
+}
+
+func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, commitHash string) (int, error) {
+	repo, err := ParseRepositoryURL(&repoURL)
+	if err != nil {
+		return 0, err
+	}
+
+	return NewClientFromGitHubClient(client).
+		GetPullRequestNumberByCommit(context.Background(), repo, commitHash)
 }

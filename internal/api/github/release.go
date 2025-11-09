@@ -9,54 +9,49 @@ import (
 
 type ReleaseListOptions struct {
 	ExcludePreRelease bool
-	ListOptions       *github.ListOptions
+	ListOptions       github.ListOptions
 }
 
-/**
- * PreReleaseを除外してStableなReleaseのリストを取得する
- */
-func (s *RepositoryState) GetStableReleaseList() error {
-	opts := &ReleaseListOptions{
-		ExcludePreRelease: true,
-		ListOptions:       &github.ListOptions{},
+func (c *Client) ListReleases(ctx context.Context, repo *Repository, opts ReleaseListOptions) ([]*github.RepositoryRelease, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("nil context provided")
 	}
-	return s.GetReleaseList(opts)
-}
-
-/**
- * オプションを指定してReleaseのリストを取得する
- */
-func (s *RepositoryState) GetReleaseList(opts *ReleaseListOptions) error {
-	if opts == nil {
-		opts = &ReleaseListOptions{
-			ExcludePreRelease: false,
-			ListOptions:       &github.ListOptions{},
-		}
+	if c == nil || c.github == nil {
+		return nil, fmt.Errorf("github client is not configured")
+	}
+	if repo == nil {
+		return nil, fmt.Errorf("repository is nil")
 	}
 
-	if opts.ListOptions == nil {
-		opts.ListOptions = &github.ListOptions{}
-	}
-
-	var err error
-	var allReleases []*github.RepositoryRelease
-
-	allReleases, _, err = s.Client.Repositories.ListReleases(context.Background(), s.Owner, s.Repo, opts.ListOptions)
+	listOpts := opts.ListOptions
+	releases, _, err := c.github.Repositories.ListReleases(ctx, repo.Owner, repo.Name, &listOpts)
 	if err != nil {
-		return fmt.Errorf("failed to list releases: %w", err)
+		return nil, fmt.Errorf("failed to list releases: %w", err)
 	}
 
-	if opts.ExcludePreRelease {
-		stableReleases := make([]*github.RepositoryRelease, 0, len(allReleases))
-		for _, release := range allReleases {
-			if release.Prerelease == nil || !*release.Prerelease {
-				stableReleases = append(stableReleases, release)
-			}
+	if !opts.ExcludePreRelease {
+		repo.Releases = releases
+		return releases, nil
+	}
+
+	filtered := make([]*github.RepositoryRelease, 0, len(releases))
+	for _, release := range releases {
+		if release == nil {
+			continue
 		}
-		s.Releases = stableReleases
-	} else {
-		s.Releases = allReleases
+		if release.GetPrerelease() {
+			continue
+		}
+		filtered = append(filtered, release)
 	}
 
-	return nil
+	repo.Releases = filtered
+	return filtered, nil
+}
+
+func (c *Client) ListStableReleases(ctx context.Context, repo *Repository, listOpts github.ListOptions) ([]*github.RepositoryRelease, error) {
+	return c.ListReleases(ctx, repo, ReleaseListOptions{
+		ExcludePreRelease: true,
+		ListOptions:       listOpts,
+	})
 }

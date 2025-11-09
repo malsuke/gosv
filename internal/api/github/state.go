@@ -8,33 +8,34 @@ import (
 	"github.com/google/go-github/v77/github"
 )
 
-type RepositoryState struct {
-	RepoUrl  *url.URL
+type Repository struct {
 	Owner    string
-	Repo     string
+	Name     string
 	Releases []*github.RepositoryRelease
 }
 
-func NewRepositoryState(token string, repoUrl *url.URL) (*RepositoryState, error) {
-	owner, repo, err := parseGitHubURL(repoUrl)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse GitHub repository URL: %w", err)
+func ParseRepositoryURL(u *url.URL) (Repository, error) {
+	if u == nil {
+		return Repository{}, fmt.Errorf("invalid GitHub repository URL: <nil>")
 	}
 
-	return &RepositoryState{
-		RepoUrl: repoUrl,
-		Owner:   owner,
-		Repo:    repo,
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 2 {
+		return Repository{}, fmt.Errorf("invalid GitHub repository URL: %s", u.String())
+	}
+
+	repo := strings.TrimSuffix(parts[1], ".git")
+
+	return Repository{
+		Owner: parts[0],
+		Name:  repo,
 	}, nil
 }
 
-func parseGitHubURL(u *url.URL) (owner, repo string, err error) {
-	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
-	if len(parts) < 2 {
-		return "", "", fmt.Errorf("invalid GitHub repository URL: %s", u.String())
+func ParseRepository(rawURL string) (Repository, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return Repository{}, fmt.Errorf("failed to parse GitHub repository URL: %w", err)
 	}
-	owner = parts[0]
-	repo = parts[1]
-	repo = strings.TrimSuffix(repo, ".git")
-	return owner, repo, nil
+	return ParseRepositoryURL(parsed)
 }

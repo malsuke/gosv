@@ -1,21 +1,27 @@
 package gh
 
 import (
+	"net/http"
+
 	"github.com/google/go-github/v77/github"
 )
 
 type Client struct {
-	Client *github.Client
+	github *github.Client
 }
 
-func NewClientWrapper(token string) *Client {
-	if token == "" {
-		return &Client{
-			Client: github.NewClient(nil),
-		}
+func NewClient(token string, httpClient *http.Client) *Client {
+	ghClient := github.NewClient(httpClient)
+	if token != "" {
+		ghClient = ghClient.WithAuthToken(token)
 	}
 
-	return &Client{
-		Client: github.NewClient(nil).WithAuthToken(token),
+	return &Client{github: ghClient}
+}
+
+func NewClientFromGitHubClient(client *github.Client) *Client {
+	if client == nil {
+		client = github.NewClient(nil)
 	}
+	return &Client{github: client}
 }
