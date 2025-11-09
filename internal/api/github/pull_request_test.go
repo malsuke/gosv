@@ -1,14 +1,17 @@
 package gh
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-github/v77/github"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetPullRequestIDFromCommitHash(t *testing.T) {
@@ -34,13 +37,8 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			repoURL:    mustParseURL("https://github.com/owner/repo"),
 			commitHash: "abcdef123456",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != "GET" {
-					t.Errorf("Expected GET request, got %s", r.Method)
-				}
-				expectedPath := "/repos/owner/repo/commits/abcdef123456/pulls"
-				if r.URL.Path != expectedPath {
-					t.Errorf("Request path = %q, want %q", r.URL.Path, expectedPath)
-				}
+				assert.Equal(t, "GET", r.Method)
+				assert.Equal(t, "/repos/owner/repo/commits/abcdef123456/pulls", r.URL.Path)
 
 				prNumber := 123
 				repoID := int64(12345)
@@ -55,12 +53,8 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 						},
 					},
 				}
-				jsonBytes, err := json.Marshal(prs)
-				if err != nil {
-					t.Fatalf("failed to marshal test data: %v", err)
-				}
 				w.Header().Set("Content-Type", "application/json")
-				w.Write(jsonBytes)
+				require.NoError(t, json.NewEncoder(w).Encode(prs))
 			},
 			wantPRID: 123,
 			wantErr:  false,
@@ -71,12 +65,8 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			commitHash: "fedcba654321",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				prs := []*github.PullRequest{}
-				jsonBytes, err := json.Marshal(prs)
-				if err != nil {
-					t.Fatalf("failed to marshal test data: %v", err)
-				}
 				w.Header().Set("Content-Type", "application/json")
-				w.Write(jsonBytes)
+				require.NoError(t, json.NewEncoder(w).Encode(prs))
 			},
 			wantPRID:      0,
 			wantErr:       true,
@@ -89,7 +79,7 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			handler:       nil,
 			wantPRID:      0,
 			wantErr:       true,
-			wantErrString: "invalid repo URL path: /owner",
+			wantErrString: "invalid GitHub repository URL: https://github.com/owner",
 		},
 		{
 			name:       "github api error",
@@ -162,12 +152,8 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 						},
 					},
 				}
-				jsonBytes, err := json.Marshal(prs)
-				if err != nil {
-					t.Fatalf("failed to marshal test data: %v", err)
-				}
 				w.Header().Set("Content-Type", "application/json")
-				w.Write(jsonBytes)
+				require.NoError(t, json.NewEncoder(w).Encode(prs))
 			},
 			wantPRID: 100,
 			wantErr:  false,
@@ -178,9 +164,7 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			commitHash: "commit123456",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				expectedPath := "/repos/owner/repo/commits/commit123456/pulls"
-				if r.URL.Path != expectedPath {
-					t.Errorf("Request path = %q, want %q", r.URL.Path, expectedPath)
-				}
+				assert.Equal(t, expectedPath, r.URL.Path)
 
 				prNumber := 999
 				repoID := int64(12345)
@@ -195,12 +179,8 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 						},
 					},
 				}
-				jsonBytes, err := json.Marshal(prs)
-				if err != nil {
-					t.Fatalf("failed to marshal test data: %v", err)
-				}
 				w.Header().Set("Content-Type", "application/json")
-				w.Write(jsonBytes)
+				require.NoError(t, json.NewEncoder(w).Encode(prs))
 			},
 			wantPRID: 999,
 			wantErr:  false,
@@ -209,7 +189,7 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var client *github.Client
+			client := github.NewClient(nil)
 
 			if tt.handler != nil {
 				server := httptest.NewServer(tt.handler)
@@ -217,28 +197,202 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 
 				client = github.NewClient(server.Client())
 				baseURL, err := url.Parse(server.URL + "/")
-				if err != nil {
-					t.Fatalf("Failed to parse server URL: %v", err)
-				}
+				require.NoError(t, err)
 				client.BaseURL = baseURL
-			} else {
-				client = github.NewClient(nil)
 			}
 
 			prID, err := GetPullRequestIDFromCommitHash(client, tt.repoURL, tt.commitHash)
 
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("GetPullRequestIDFromCommitHash() error = %v, wantErr %v", err, tt.wantErr)
-			}
 			if tt.wantErr {
-				if !strings.Contains(err.Error(), tt.wantErrString) {
-					t.Errorf("GetPullRequestIDFromCommitHash() error = %q, want to contain %q", err.Error(), tt.wantErrString)
-				}
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.wantErrString)
 				return
 			}
-			if prID != tt.wantPRID {
-				t.Errorf("GetPullRequestIDFromCommitHash() = %v, want %v", prID, tt.wantPRID)
-			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPRID, prID)
 		})
 	}
+}
+
+func TestClientGetPullRequestNumberByCommit(t *testing.T) {
+	ctx := context.Background()
+	repo := Repository{Owner: "owner", Name: "repo"}
+
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			prNumber := 42
+			resp := []*github.PullRequest{
+				{Number: &prNumber},
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		number, err := NewClientFromGitHubClient(client).GetPullRequestNumberByCommit(ctx, repo, "hash")
+		require.NoError(t, err)
+		assert.Equal(t, 42, number)
+	})
+
+	t.Run("no pull request found", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			resp := []*github.PullRequest{}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		_, err = NewClientFromGitHubClient(client).GetPullRequestNumberByCommit(ctx, repo, "hash")
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "no pull request found for commit hash")
+	})
+
+	t.Run("nil context", func(t *testing.T) {
+		client := NewClient("", nil)
+		var nilCtx context.Context
+		_, err := client.GetPullRequestNumberByCommit(nilCtx, repo, "hash")
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "nil context provided")
+	})
+
+	t.Run("nil client", func(t *testing.T) {
+		var client *Client
+		_, err := client.GetPullRequestNumberByCommit(ctx, repo, "hash")
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "github client is not configured")
+	})
+}
+
+func TestClientSearchMergedPullRequests(t *testing.T) {
+	ctx := context.Background()
+	repo := Repository{Owner: "owner", Name: "repo"}
+	start := time.Date(2025, 10, 1, 10, 0, 0, 0, time.UTC)
+	end := time.Date(2025, 11, 8, 12, 0, 0, 0, time.UTC)
+
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/search/issues", r.URL.Path)
+			assert.Equal(
+				t,
+				"repo:owner/repo is:pr is:merged merged:2025-10-01T10:00:00Z..2025-11-08T12:00:00Z",
+				r.URL.Query().Get("q"),
+			)
+
+			resp := github.IssuesSearchResult{
+				Total: github.Int(1),
+				Issues: []*github.Issue{
+					{
+						Number: github.Int(123),
+						Title:  github.String("Merged PR"),
+					},
+				},
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		items, err := NewClientFromGitHubClient(client).
+			SearchMergedPullRequests(ctx, repo, start, end)
+
+		require.NoError(t, err)
+		require.Len(t, items, 1)
+		assert.Equal(t, 123, items[0].GetNumber())
+		assert.Equal(t, "Merged PR", items[0].GetTitle())
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		_, err = NewClientFromGitHubClient(client).
+			SearchMergedPullRequests(ctx, repo, start, end)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to search merged pull requests")
+	})
+
+	t.Run("nil result", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{}`))
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(handler))
+		defer server.Close()
+
+		client := github.NewClient(server.Client())
+		baseURL, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = baseURL
+
+		items, err := NewClientFromGitHubClient(client).
+			SearchMergedPullRequests(ctx, repo, start, end)
+
+		require.NoError(t, err)
+		assert.Nil(t, items)
+	})
+
+	t.Run("nil context", func(t *testing.T) {
+		client := NewClient("", nil)
+		var nilCtx context.Context
+		_, err := client.SearchMergedPullRequests(nilCtx, repo, start, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "nil context provided")
+	})
+
+	t.Run("nil client", func(t *testing.T) {
+		var client *Client
+		_, err := client.SearchMergedPullRequests(ctx, repo, start, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "github client is not configured")
+	})
+
+	t.Run("invalid repository", func(t *testing.T) {
+		client := NewClient("", nil)
+		_, err := client.SearchMergedPullRequests(ctx, Repository{}, start, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "repository owner and name must be provided")
+	})
+
+	t.Run("missing time range", func(t *testing.T) {
+		client := NewClient("", nil)
+		_, err := client.SearchMergedPullRequests(ctx, repo, time.Time{}, end)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "time range must be provided")
+	})
+
+	t.Run("end before start", func(t *testing.T) {
+		client := NewClient("", nil)
+		_, err := client.SearchMergedPullRequests(ctx, repo, end, start)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "end time must not be before start time")
+	})
 }

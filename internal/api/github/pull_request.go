@@ -4,21 +4,20 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
+	"time"
 
 	"github.com/google/go-github/v77/github"
 )
 
-func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, commitHash string) (int, error) {
-	pathParts := strings.Split(strings.Trim(repoURL.Path, "/"), "/")
-	if len(pathParts) < 2 {
-		return 0, fmt.Errorf("invalid repo URL path: %s", repoURL.Path)
+func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, repo Repository, commitHash string) (int, error) {
+	if ctx == nil {
+		return 0, fmt.Errorf("nil context provided")
+	}
+	if c == nil || c.github == nil {
+		return 0, fmt.Errorf("github client is not configured")
 	}
 
-	owner := pathParts[0]
-	repo := strings.TrimSuffix(pathParts[1], ".git")
-
-	prs, _, err := client.PullRequests.ListPullRequestsWithCommit(context.Background(), owner, repo, commitHash, nil)
+	prs, _, err := c.github.PullRequests.ListPullRequestsWithCommit(ctx, repo.Owner, repo.Name, commitHash, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to list pull requests with commit: %w", err)
 	}
@@ -28,4 +27,49 @@ func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, comm
 	}
 
 	return prs[0].GetNumber(), nil
+}
+
+func (c *Client) SearchMergedPullRequests(ctx context.Context, repo Repository, start time.Time, end time.Time) ([]*github.Issue, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("nil context provided")
+	}
+	if c == nil || c.github == nil {
+		return nil, fmt.Errorf("github client is not configured")
+	}
+	if repo.Owner == "" || repo.Name == "" {
+		return nil, fmt.Errorf("repository owner and name must be provided")
+	}
+	if start.IsZero() || end.IsZero() {
+		return nil, fmt.Errorf("time range must be provided")
+	}
+	if end.Before(start) {
+		return nil, fmt.Errorf("end time must not be before start time")
+	}
+
+	query := fmt.Sprintf(
+		"repo:%s/%s is:pr is:merged merged:%s..%s",
+		repo.Owner,
+		repo.Name,
+		start.Format(time.RFC3339),
+		end.Format(time.RFC3339),
+	)
+
+	result, _, err := c.github.Search.Issues(ctx, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search merged pull requests: %w", err)
+	}
+	if result == nil {
+		return nil, nil
+	}
+	return result.Issues, nil
+}
+
+func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, commitHash string) (int, error) {
+	repo, err := ParseRepositoryURL(&repoURL)
+	if err != nil {
+		return 0, err
+	}
+
+	return NewClientFromGitHubClient(client).
+		GetPullRequestNumberByCommit(context.Background(), repo, commitHash)
 }
