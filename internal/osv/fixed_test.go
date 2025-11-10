@@ -14,8 +14,8 @@ func TestExtractFixedCommit(t *testing.T) {
 				Ranges: &[]osvapi.OsvRange{
 					{
 						Events: &[]osvapi.OsvEvent{
-							{Fixed: ptr.String("fix-001")},
-							{Fixed: ptr.String("fix-002")},
+							{Fixed: ptr.Ptr("fix-001")},
+							{Fixed: ptr.Ptr("fix-002")},
 						},
 					},
 				},

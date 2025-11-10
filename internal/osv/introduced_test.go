@@ -14,8 +14,8 @@ func TestExtractIntroducedCommit(t *testing.T) {
 				Ranges: &[]osvapi.OsvRange{
 					{
 						Events: &[]osvapi.OsvEvent{
-							{Introduced: ptr.String("commit-001")},
-							{Introduced: ptr.String("commit-002")},
+							{Introduced: ptr.Ptr("commit-001")},
+							{Introduced: ptr.Ptr("commit-002")},
 						},
 					},
 				},

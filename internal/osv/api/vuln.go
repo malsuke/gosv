@@ -22,8 +22,8 @@ func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
 	resp, err := client.OSVQueryAffectedWithResponse(context.Background(),
 		OSVQueryAffectedJSONRequestBody{
 			Package: &OsvPackage{
-				Name:      ptr.String(repoUrl),
-				Ecosystem: ptr.String("GIT"),
+				Name:      ptr.Ptr(repoUrl),
+				Ecosystem: ptr.Ptr("GIT"),
 			},
 		})
 	if err != nil {
