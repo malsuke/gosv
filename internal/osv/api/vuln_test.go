@@ -13,11 +13,11 @@ func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
-	orig := osvAPIBaseURL
-	osvAPIBaseURL = server.URL
+	orig := OsvAPIBaseURL
+	OsvAPIBaseURL = server.URL
 
 	return func() {
-		osvAPIBaseURL = orig
+		OsvAPIBaseURL = orig
 	}
 }
 
