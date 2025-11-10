@@ -1,4 +1,4 @@
-package gh
+package ghapi
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v77/github"
+	gh "github.com/malsuke/govs/internal/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -210,7 +211,7 @@ func TestGetReleaseList(t *testing.T) {
 				client.BaseURL = baseURL
 			}
 
-			repo := &Repository{Owner: "owner", Name: "repo"}
+			repo := &gh.Repository{Owner: "owner", Name: "repo"}
 			opts := ReleaseListOptions{}
 			if tt.opts != nil {
 				opts = *tt.opts
@@ -345,7 +346,7 @@ func TestGetStableReleaseList(t *testing.T) {
 				client.BaseURL = baseURL
 			}
 
-			repo := &Repository{Owner: "owner", Name: "repo"}
+			repo := &gh.Repository{Owner: "owner", Name: "repo"}
 
 			releases, err := NewClientFromGitHubClient(client).
 				ListStableReleases(context.Background(), repo, github.ListOptions{})

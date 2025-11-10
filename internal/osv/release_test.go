@@ -1,14 +1,14 @@
-package vuln
+package osv
 
 import (
 	"testing"
 
-	"github.com/malsuke/govs/internal/api/osv"
+	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
 func TestCollectReleaseVersions(t *testing.T) {
-	vuln := &osv.OsvVulnerability{
-		Affected: &[]osv.OsvAffected{
+	vuln := &osvapi.OsvVulnerability{
+		Affected: &[]osvapi.OsvAffected{
 			{
 				Versions: &[]string{"1.0.0", "1.0.1"},
 			},
@@ -38,8 +38,8 @@ func TestCollectReleaseVersions_NilVulnerability(t *testing.T) {
 }
 
 func TestEarliestReleaseVersion(t *testing.T) {
-	vuln := &osv.OsvVulnerability{
-		Affected: &[]osv.OsvAffected{
+	vuln := &osvapi.OsvVulnerability{
+		Affected: &[]osvapi.OsvAffected{
 			{
 				Versions: &[]string{"1.2.0", "1.1.0"},
 			},
@@ -55,7 +55,7 @@ func TestEarliestReleaseVersion(t *testing.T) {
 }
 
 func TestEarliestReleaseVersion_NoVersions(t *testing.T) {
-	vuln := &osv.OsvVulnerability{}
+	vuln := &osvapi.OsvVulnerability{}
 
 	if got := EarliestReleaseVersion(vuln); got != "" {
 		t.Fatalf("EarliestReleaseVersion() = %s, want empty string", got)

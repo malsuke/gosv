@@ -1,4 +1,4 @@
-package osv
+package osvapi
 
 import (
 	"encoding/json"
@@ -6,18 +6,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/malsuke/govs/internal/misc/ptr"
+	"github.com/malsuke/govs/internal/common/ptr"
 )
 
 func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
-	orig := osvAPIBaseURL
-	osvAPIBaseURL = server.URL
+	orig := OsvAPIBaseURL
+	OsvAPIBaseURL = server.URL
 
 	return func() {
-		osvAPIBaseURL = orig
+		OsvAPIBaseURL = orig
 	}
 }
 
@@ -26,7 +26,7 @@ func TestGetVulnerabilityByCVE_Success(t *testing.T) {
 		switch r.URL.Path {
 		case "/v1/vulns/CVE-2023-0001":
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(OsvVulnerability{Id: ptr.String("CVE-2023-0001")}); err != nil {
+			if err := json.NewEncoder(w).Encode(OsvVulnerability{Id: ptr.Ptr("CVE-2023-0001")}); err != nil {
 				t.Fatalf("failed to encode response: %v", err)
 			}
 		default:
@@ -54,7 +54,7 @@ func TestGetVulnerabilityByCVE_APIError(t *testing.T) {
 	cleanup := withTempOSVServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		if err := json.NewEncoder(w).Encode(RpcStatus{Message: ptr.String("not found")}); err != nil {
+		if err := json.NewEncoder(w).Encode(RpcStatus{Message: ptr.Ptr("not found")}); err != nil {
 			t.Fatalf("failed to encode response: %v", err)
 		}
 	})
@@ -72,7 +72,7 @@ func TestGetCveIDListFromGithubURL_Success(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			response := V1VulnerabilityList{
 				Vulns: &[]OsvVulnerability{
-					{Id: ptr.String("CVE-2023-0001")},
+					{Id: ptr.Ptr("CVE-2023-0001")},
 					{Aliases: &[]string{"CVE-2023-0002"}},
 				},
 			}
