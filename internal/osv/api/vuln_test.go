@@ -1,4 +1,4 @@
-package osv
+package osvapi
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/malsuke/govs/internal/misc/ptr"
+	"github.com/malsuke/govs/internal/common/ptr"
 )
 
 func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {

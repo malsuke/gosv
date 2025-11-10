@@ -1,19 +1,19 @@
-package vuln
+package osv
 
 import (
 	"testing"
 
-	"github.com/malsuke/govs/internal/api/osv"
-	"github.com/malsuke/govs/internal/misc/ptr"
+	"github.com/malsuke/govs/internal/common/ptr"
+	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
 func TestExtractIntroducedCommit(t *testing.T) {
-	v := &osv.OsvVulnerability{
-		Affected: &[]osv.OsvAffected{
+	v := &osvapi.OsvVulnerability{
+		Affected: &[]osvapi.OsvAffected{
 			{
-				Ranges: &[]osv.OsvRange{
+				Ranges: &[]osvapi.OsvRange{
 					{
-						Events: &[]osv.OsvEvent{
+						Events: &[]osvapi.OsvEvent{
 							{Introduced: ptr.String("commit-001")},
 							{Introduced: ptr.String("commit-002")},
 						},
@@ -29,7 +29,7 @@ func TestExtractIntroducedCommit(t *testing.T) {
 }
 
 func TestExtractIntroducedCommitEmpty(t *testing.T) {
-	if got := ExtractIntroducedCommit(&osv.OsvVulnerability{}); got != "" {
+	if got := ExtractIntroducedCommit(&osvapi.OsvVulnerability{}); got != "" {
 		t.Fatalf("ExtractIntroducedCommit() = %s, want empty", got)
 	}
 }

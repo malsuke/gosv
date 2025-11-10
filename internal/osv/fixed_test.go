@@ -1,19 +1,19 @@
-package vuln
+package osv
 
 import (
 	"testing"
 
-	"github.com/malsuke/govs/internal/api/osv"
-	"github.com/malsuke/govs/internal/misc/ptr"
+	"github.com/malsuke/govs/internal/common/ptr"
+	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
 func TestExtractFixedCommit(t *testing.T) {
-	v := &osv.OsvVulnerability{
-		Affected: &[]osv.OsvAffected{
+	v := &osvapi.OsvVulnerability{
+		Affected: &[]osvapi.OsvAffected{
 			{
-				Ranges: &[]osv.OsvRange{
+				Ranges: &[]osvapi.OsvRange{
 					{
-						Events: &[]osv.OsvEvent{
+						Events: &[]osvapi.OsvEvent{
 							{Fixed: ptr.String("fix-001")},
 							{Fixed: ptr.String("fix-002")},
 						},
@@ -29,7 +29,7 @@ func TestExtractFixedCommit(t *testing.T) {
 }
 
 func TestExtractFixedCommitEmpty(t *testing.T) {
-	if got := ExtractFixedCommit(&osv.OsvVulnerability{}); got != "" {
+	if got := ExtractFixedCommit(&osvapi.OsvVulnerability{}); got != "" {
 		t.Fatalf("ExtractFixedCommit() = %s, want empty", got)
 	}
 }

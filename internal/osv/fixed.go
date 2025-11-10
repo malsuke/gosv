@@ -1,9 +1,11 @@
-package vuln
+package osv
 
-import "github.com/malsuke/govs/internal/api/osv"
+import (
+	osvapi "github.com/malsuke/govs/internal/osv/api"
+)
 
 // ExtractFixedCommit returns the first non-empty fixed commit hash from the vulnerability.
-func ExtractFixedCommit(v *osv.OsvVulnerability) string {
+func ExtractFixedCommit(v *osvapi.OsvVulnerability) string {
 	if v == nil || v.Affected == nil {
 		return ""
 	}

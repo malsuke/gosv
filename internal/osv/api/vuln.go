@@ -1,11 +1,11 @@
-package osv
+package osvapi
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/malsuke/govs/internal/misc/cve"
-	"github.com/malsuke/govs/internal/misc/ptr"
+	"github.com/malsuke/govs/internal/common/cve"
+	"github.com/malsuke/govs/internal/common/ptr"
 )
 
 var osvAPIBaseURL = "https://api.osv.dev"

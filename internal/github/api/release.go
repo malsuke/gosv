@@ -1,10 +1,11 @@
-package gh
+package ghapi
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/go-github/v77/github"
+	gh "github.com/malsuke/govs/internal/github"
 )
 
 type ReleaseListOptions struct {
@@ -12,7 +13,7 @@ type ReleaseListOptions struct {
 	ListOptions       github.ListOptions
 }
 
-func (c *Client) ListReleases(ctx context.Context, repo *Repository, opts ReleaseListOptions) ([]*github.RepositoryRelease, error) {
+func (c *Client) ListReleases(ctx context.Context, repo *gh.Repository, opts ReleaseListOptions) ([]*github.RepositoryRelease, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("nil context provided")
 	}
@@ -49,7 +50,7 @@ func (c *Client) ListReleases(ctx context.Context, repo *Repository, opts Releas
 	return filtered, nil
 }
 
-func (c *Client) ListStableReleases(ctx context.Context, repo *Repository, listOpts github.ListOptions) ([]*github.RepositoryRelease, error) {
+func (c *Client) ListStableReleases(ctx context.Context, repo *gh.Repository, listOpts github.ListOptions) ([]*github.RepositoryRelease, error) {
 	return c.ListReleases(ctx, repo, ReleaseListOptions{
 		ExcludePreRelease: true,
 		ListOptions:       listOpts,

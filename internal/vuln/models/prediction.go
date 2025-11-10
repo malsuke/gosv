@@ -5,9 +5,11 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/api/github"
-	osv "github.com/malsuke/govs/internal/api/osv"
-	vulnosv "github.com/malsuke/govs/internal/vuln/osv"
+
+	gh "github.com/malsuke/govs/internal/github"
+	ghapi "github.com/malsuke/govs/internal/github/api"
+	vulnosv "github.com/malsuke/govs/internal/osv"
+	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
 type Predicted struct {
@@ -26,7 +28,7 @@ type Fixed struct {
 	PR         *github.PullRequest
 }
 
-func NewPredicted(ctx context.Context, client *gh.Client, repo gh.Repository, v *osv.OsvVulnerability) (*Predicted, error) {
+func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository, v *osvapi.OsvVulnerability) (*Predicted, error) {
 	if v == nil {
 		return nil, fmt.Errorf("vulnerability is nil")
 	}
@@ -65,7 +67,7 @@ func NewPredicted(ctx context.Context, client *gh.Client, repo gh.Repository, v 
 	return predicted, nil
 }
 
-func resolvePR(ctx context.Context, client *gh.Client, repo gh.Repository, commit string) (*github.PullRequest, error) {
+func resolvePR(ctx context.Context, client *ghapi.Client, repo gh.Repository, commit string) (*github.PullRequest, error) {
 	if client == nil {
 		return nil, fmt.Errorf("github client is nil")
 	}

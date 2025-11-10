@@ -1,9 +1,9 @@
-package vuln
+package osv
 
-import "github.com/malsuke/govs/internal/api/osv"
+import osvapi "github.com/malsuke/govs/internal/osv/api"
 
 // ExtractIntroducedCommit returns the first non-empty introduced commit hash from the vulnerability.
-func ExtractIntroducedCommit(v *osv.OsvVulnerability) string {
+func ExtractIntroducedCommit(v *osvapi.OsvVulnerability) string {
 	if v == nil || v.Affected == nil {
 		return ""
 	}

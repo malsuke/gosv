@@ -1,4 +1,4 @@
-package gh
+package ghapi
 
 import (
 	"context"
@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/google/go-github/v77/github"
+	gh "github.com/malsuke/govs/internal/github"
 )
 
-func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, repo Repository, commitHash string) (int, error) {
+func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, repo gh.Repository, commitHash string) (int, error) {
 	if ctx == nil {
 		return 0, fmt.Errorf("nil context provided")
 	}
@@ -29,7 +30,7 @@ func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, repo Reposito
 	return prs[0].GetNumber(), nil
 }
 
-func (c *Client) SearchMergedPullRequests(ctx context.Context, repo Repository, start time.Time, end time.Time) ([]*github.Issue, error) {
+func (c *Client) SearchMergedPullRequests(ctx context.Context, repo gh.Repository, start time.Time, end time.Time) ([]*github.Issue, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("nil context provided")
 	}
@@ -65,7 +66,7 @@ func (c *Client) SearchMergedPullRequests(ctx context.Context, repo Repository, 
 }
 
 func GetPullRequestIDFromCommitHash(client *github.Client, repoURL url.URL, commitHash string) (int, error) {
-	repo, err := ParseRepositoryURL(&repoURL)
+	repo, err := gh.ParseRepositoryURL(&repoURL)
 	if err != nil {
 		return 0, err
 	}

@@ -1,4 +1,4 @@
-package gh
+package ghapi
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v77/github"
+	gh "github.com/malsuke/govs/internal/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -217,7 +218,7 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 
 func TestClientGetPullRequestNumberByCommit(t *testing.T) {
 	ctx := context.Background()
-	repo := Repository{Owner: "owner", Name: "repo"}
+	repo := gh.Repository{Owner: "owner", Name: "repo"}
 
 	t.Run("success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +279,7 @@ func TestClientGetPullRequestNumberByCommit(t *testing.T) {
 
 func TestClientSearchMergedPullRequests(t *testing.T) {
 	ctx := context.Background()
-	repo := Repository{Owner: "owner", Name: "repo"}
+	repo := gh.Repository{Owner: "owner", Name: "repo"}
 	start := time.Date(2025, 10, 1, 10, 0, 0, 0, time.UTC)
 	end := time.Date(2025, 11, 8, 12, 0, 0, 0, time.UTC)
 
@@ -377,7 +378,7 @@ func TestClientSearchMergedPullRequests(t *testing.T) {
 
 	t.Run("invalid repository", func(t *testing.T) {
 		client := NewClient("", nil)
-		_, err := client.SearchMergedPullRequests(ctx, Repository{}, start, end)
+		_, err := client.SearchMergedPullRequests(ctx, gh.Repository{}, start, end)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "repository owner and name must be provided")
 	})
