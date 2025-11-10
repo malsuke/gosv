@@ -4,51 +4,41 @@ import (
 	"context"
 	"fmt"
 
+	gh "github.com/malsuke/govs/internal/github/domain"
+
 	"github.com/malsuke/govs/internal/common/cve"
 	"github.com/malsuke/govs/internal/common/ptr"
 )
 
 var OsvAPIBaseURL = "https://api.osv.dev"
 
-/**
- * GitHubリポジトリのURLからCVE番号のリストを取得する
- */
-func GetCveIDListFromGithubURL(repoUrl string) ([]string, error) {
-	vulns, err := fetchAffectedVulnerabilities(repoUrl)
+// ListCVEIDsByRepository は GitHub リポジトリに紐づく CVE ID の一覧を取得する。
+func ListCVEIDsByRepository(ctx context.Context, repo gh.Repository) ([]string, error) {
+	vulns, err := listVulnerabilitiesWithCVE(ctx, repo)
 	if err != nil {
 		return nil, err
 	}
 
-	cveList := make([]string, 0, len(vulns))
+	ids := make([]string, 0, len(vulns))
 	for _, vuln := range vulns {
-		if cve := extractCVEFromVulnerability(&vuln); cve != "" {
-			cveList = append(cveList, cve)
+		if cveID := ExtractCVEFromVulnerability(&vuln); cveID != "" {
+			ids = append(ids, cveID)
 		}
 	}
 
-	return cveList, nil
+	return ids, nil
 }
 
-/**
- * GitHubリポジトリのURLからCVE番号形式のOSV脆弱性情報を取得する
- */
-func GetCveVulnerabilityListFromGithubURL(repoUrl string) ([]OsvVulnerability, error) {
-	vulns, err := fetchAffectedVulnerabilities(repoUrl)
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]OsvVulnerability, 0, len(vulns))
-	for _, vuln := range vulns {
-		if extractCVEFromVulnerability(&vuln) != "" {
-			result = append(result, vuln)
-		}
-	}
-
-	return result, nil
+// ListCVEVulnerabilitiesByRepository は GitHub リポジトリに紐づく CVE 形式の OSV 脆弱性一覧を取得する。
+func ListCVEVulnerabilitiesByRepository(ctx context.Context, repo gh.Repository) ([]OsvVulnerability, error) {
+	return listVulnerabilitiesWithCVE(ctx, repo)
 }
 
-func GetVulnerabilityByCVE(cveID string) (*OsvVulnerability, error) {
+// GetVulnerabilityByCVE は CVE ID から脆弱性を取得する。
+func GetVulnerabilityByCVE(ctx context.Context, cveID string) (*OsvVulnerability, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("context must not be nil")
+	}
 	if !cve.IsValidCVEFormat(cveID) {
 		return nil, fmt.Errorf("invalid CVE format: %s", cveID)
 	}
@@ -58,7 +48,7 @@ func GetVulnerabilityByCVE(cveID string) (*OsvVulnerability, error) {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	resp, err := client.OSVGetVulnByIdWithResponse(context.Background(), cveID)
+	resp, err := client.OSVGetVulnByIdWithResponse(ctx, cveID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call API: %w", err)
 	}
@@ -73,6 +63,33 @@ func GetVulnerabilityByCVE(cveID string) (*OsvVulnerability, error) {
 	return resp.JSON200, nil
 }
 
+// ExtractCVEFromVulnerability は脆弱性情報から CVE ID を抽出する。
+func ExtractCVEFromVulnerability(v *OsvVulnerability) string {
+	if v == nil {
+		return ""
+	}
+	if v.Id != nil && cve.IsValidCVEFormat(*v.Id) {
+		return *v.Id
+	}
+	return extractCVEFromAliases(v.Aliases)
+}
+
+func listVulnerabilitiesWithCVE(ctx context.Context, repo gh.Repository) ([]OsvVulnerability, error) {
+	vulns, err := fetchAffectedVulnerabilities(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]OsvVulnerability, 0, len(vulns))
+	for _, vuln := range vulns {
+		if ExtractCVEFromVulnerability(&vuln) != "" {
+			filtered = append(filtered, vuln)
+		}
+	}
+
+	return filtered, nil
+}
+
 func extractCVEFromAliases(aliases *[]string) string {
 	if aliases == nil {
 		return ""
@@ -85,16 +102,25 @@ func extractCVEFromAliases(aliases *[]string) string {
 	return ""
 }
 
-func fetchAffectedVulnerabilities(repoUrl string) ([]OsvVulnerability, error) {
+func fetchAffectedVulnerabilities(ctx context.Context, repo gh.Repository) ([]OsvVulnerability, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("context must not be nil")
+	}
+
+	canonicalURL, err := repo.CanonicalGitURL()
+	if err != nil {
+		return nil, err
+	}
+
 	client, err := NewClientWithResponses(OsvAPIBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	resp, err := client.OSVQueryAffectedWithResponse(context.Background(),
+	resp, err := client.OSVQueryAffectedWithResponse(ctx,
 		OSVQueryAffectedJSONRequestBody{
 			Package: &OsvPackage{
-				Name:      ptr.Ptr(repoUrl),
+				Name:      ptr.Ptr(canonicalURL),
 				Ecosystem: ptr.Ptr("GIT"),
 			},
 		})
@@ -114,14 +140,4 @@ func fetchAffectedVulnerabilities(repoUrl string) ([]OsvVulnerability, error) {
 	copied := make([]OsvVulnerability, len(*vulns))
 	copy(copied, *vulns)
 	return copied, nil
-}
-
-func extractCVEFromVulnerability(v *OsvVulnerability) string {
-	if v == nil {
-		return ""
-	}
-	if v.Id != nil && cve.IsValidCVEFormat(*v.Id) {
-		return *v.Id
-	}
-	return extractCVEFromAliases(v.Aliases)
 }

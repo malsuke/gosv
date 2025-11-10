@@ -14,6 +14,20 @@ type Repository struct {
 	Releases []*github.RepositoryRelease
 }
 
+func (r Repository) CanonicalGitURL() (string, error) {
+	if err := r.Validate(); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("https://github.com/%s/%s", r.Owner, r.Name), nil
+}
+
+func (r Repository) Validate() error {
+	if strings.TrimSpace(r.Owner) == "" || strings.TrimSpace(r.Name) == "" {
+		return fmt.Errorf("repository owner and name must be provided")
+	}
+	return nil
+}
+
 func ParseRepositoryURL(u *url.URL) (Repository, error) {
 	if u == nil {
 		return Repository{}, fmt.Errorf("invalid GitHub repository URL: <nil>")

@@ -60,3 +60,42 @@ func TestParseRepository(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to parse GitHub repository URL")
 	})
 }
+
+func TestRepositoryValidate(t *testing.T) {
+	cases := map[string]struct {
+		repo    Repository
+		wantErr bool
+	}{
+		"valid": {
+			repo:    Repository{Owner: "owner", Name: "repo"},
+			wantErr: false,
+		},
+		"missing owner": {
+			repo:    Repository{Name: "repo"},
+			wantErr: true,
+		},
+		"missing name": {
+			repo:    Repository{Owner: "owner"},
+			wantErr: true,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			err := tc.repo.Validate()
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRepositoryCanonicalGitURL(t *testing.T) {
+	repo := Repository{Owner: "owner", Name: "repo"}
+
+	got, err := repo.CanonicalGitURL()
+	require.NoError(t, err)
+	assert.Equal(t, "https://github.com/owner/repo", got)
+}

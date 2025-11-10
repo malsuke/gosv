@@ -1,22 +1,37 @@
 package vuln
 
 import (
-	osvapi "github.com/malsuke/govs/internal/osv/api"
-	osvsvc "github.com/malsuke/govs/internal/osv/service"
+	"context"
+	"fmt"
+
+	gh "github.com/malsuke/govs/internal/github/domain"
+	vulndomain "github.com/malsuke/govs/internal/vuln/domain"
+	vulnservice "github.com/malsuke/govs/internal/vuln/service"
 )
 
-func ListCVEsStringByGitHubURL(repoURL string) ([]string, error) {
-	cveIDs, err := osvsvc.FetchCveIDsByGitHubURL(repoURL)
+func ListVulnerabilitiesByGitHubURL(ctx context.Context, repoURL string) ([]vulndomain.Vulnerability, error) {
+	repo, err := parseRepository(repoURL)
 	if err != nil {
 		return nil, err
 	}
-	return cveIDs, nil
+	return vulnservice.FetchVulnerabilitiesByRepository(ctx, repo)
 }
 
-func ListCVEsDetailByGitHubURL(repoURL string) ([]osvapi.OsvVulnerability, error) {
-	vulns, err := osvsvc.FetchCveVulnerabilitiesByGitHubURL(repoURL)
+func ListCVEIDsByGitHubURL(ctx context.Context, repoURL string) ([]string, error) {
+	repo, err := parseRepository(repoURL)
 	if err != nil {
 		return nil, err
 	}
-	return vulns, nil
+	return vulnservice.ListCVEIDsByRepository(ctx, repo)
+}
+
+func parseRepository(repoURL string) (gh.Repository, error) {
+	if repoURL == "" {
+		return gh.Repository{}, fmt.Errorf("repository URL must not be empty")
+	}
+	repo, err := gh.ParseRepository(repoURL)
+	if err != nil {
+		return gh.Repository{}, fmt.Errorf("failed to parse GitHub repository URL: %w", err)
+	}
+	return repo, nil
 }

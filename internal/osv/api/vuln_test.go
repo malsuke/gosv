@@ -1,12 +1,14 @@
 package osvapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/malsuke/govs/internal/common/ptr"
+	gh "github.com/malsuke/govs/internal/github/domain"
 )
 
 func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {
@@ -18,6 +20,13 @@ func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {
 
 	return func() {
 		OsvAPIBaseURL = orig
+	}
+}
+
+func testRepository() gh.Repository {
+	return gh.Repository{
+		Owner: "example",
+		Name:  "repo",
 	}
 }
 
@@ -35,7 +44,9 @@ func TestGetVulnerabilityByCVE_Success(t *testing.T) {
 	})
 	defer cleanup()
 
-	vuln, err := GetVulnerabilityByCVE("CVE-2023-0001")
+	ctx := context.Background()
+
+	vuln, err := GetVulnerabilityByCVE(ctx, "CVE-2023-0001")
 	if err != nil {
 		t.Fatalf("GetVulnerabilityByCVE() error = %v", err)
 	}
@@ -45,7 +56,8 @@ func TestGetVulnerabilityByCVE_Success(t *testing.T) {
 }
 
 func TestGetVulnerabilityByCVE_InvalidCVE(t *testing.T) {
-	if _, err := GetVulnerabilityByCVE("invalid-cve"); err == nil {
+	ctx := context.Background()
+	if _, err := GetVulnerabilityByCVE(ctx, "invalid-cve"); err == nil {
 		t.Fatalf("GetVulnerabilityByCVE() error = nil, want non-nil")
 	}
 }
@@ -60,12 +72,14 @@ func TestGetVulnerabilityByCVE_APIError(t *testing.T) {
 	})
 	defer cleanup()
 
-	if _, err := GetVulnerabilityByCVE("CVE-2023-0001"); err == nil {
+	ctx := context.Background()
+
+	if _, err := GetVulnerabilityByCVE(ctx, "CVE-2023-0001"); err == nil {
 		t.Fatalf("GetVulnerabilityByCVE() error = nil, want non-nil")
 	}
 }
 
-func TestGetCveIDListFromGithubURL_Success(t *testing.T) {
+func TestListCVEIDsByRepository_Success(t *testing.T) {
 	cleanup := withTempOSVServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v1/query":
@@ -85,23 +99,26 @@ func TestGetCveIDListFromGithubURL_Success(t *testing.T) {
 	})
 	defer cleanup()
 
-	got, err := GetCveIDListFromGithubURL("https://example.com/repo.git")
+	ctx := context.Background()
+	repo := testRepository()
+
+	got, err := ListCVEIDsByRepository(ctx, repo)
 	if err != nil {
-		t.Fatalf("GetCveIDListFromGithubURL() error = %v", err)
+		t.Fatalf("ListCVEIDsByRepository() error = %v", err)
 	}
 
 	want := []string{"CVE-2023-0001", "CVE-2023-0002"}
 	if len(got) != len(want) {
-		t.Fatalf("GetCveIDListFromGithubURL() = %v, want %v", got, want)
+		t.Fatalf("ListCVEIDsByRepository() = %v, want %v", got, want)
 	}
 	for i, id := range want {
 		if got[i] != id {
-			t.Fatalf("GetCveIDListFromGithubURL()[%d] = %v, want %v", i, got[i], id)
+			t.Fatalf("ListCVEIDsByRepository()[%d] = %v, want %v", i, got[i], id)
 		}
 	}
 }
 
-func TestGetCveIDListFromGithubURL_Empty(t *testing.T) {
+func TestListCVEIDsByRepository_Empty(t *testing.T) {
 	cleanup := withTempOSVServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v1/query":
@@ -116,22 +133,28 @@ func TestGetCveIDListFromGithubURL_Empty(t *testing.T) {
 	})
 	defer cleanup()
 
-	got, err := GetCveIDListFromGithubURL("https://example.com/repo.git")
+	ctx := context.Background()
+	repo := testRepository()
+
+	got, err := ListCVEIDsByRepository(ctx, repo)
 	if err != nil {
-		t.Fatalf("GetCveIDListFromGithubURL() error = %v", err)
+		t.Fatalf("ListCVEIDsByRepository() error = %v", err)
 	}
 	if len(got) != 0 {
-		t.Fatalf("GetCveIDListFromGithubURL() = %v, want empty", got)
+		t.Fatalf("ListCVEIDsByRepository() = %v, want empty", got)
 	}
 }
 
-func TestGetCveIDListFromGithubURL_APIError(t *testing.T) {
+func TestListCVEIDsByRepository_APIError(t *testing.T) {
 	cleanup := withTempOSVServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 	defer cleanup()
 
-	if _, err := GetCveIDListFromGithubURL("https://example.com/repo.git"); err == nil {
-		t.Fatalf("GetCveIDListFromGithubURL() error = nil, want non-nil")
+	ctx := context.Background()
+	repo := testRepository()
+
+	if _, err := ListCVEIDsByRepository(ctx, repo); err == nil {
+		t.Fatalf("ListCVEIDsByRepository() error = nil, want non-nil")
 	}
 }
