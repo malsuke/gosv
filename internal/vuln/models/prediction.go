@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/v77/github"
-
 	gh "github.com/malsuke/govs/internal/github"
 	ghapi "github.com/malsuke/govs/internal/github/api"
 	vulnosv "github.com/malsuke/govs/internal/osv"
