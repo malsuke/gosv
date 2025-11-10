@@ -1,4 +1,4 @@
-package osv
+package domain
 
 import (
 	"sort"
@@ -6,9 +6,7 @@ import (
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
-/**
- * OSVの脆弱性情報から、影響を受けるバージョン情報を取得する
- */
+// CollectReleaseVersions returns a sorted list of affected release versions from the vulnerability.
 func CollectReleaseVersions(v *osvapi.OsvVulnerability) []string {
 	if v == nil {
 		return nil
@@ -44,7 +42,6 @@ func CollectReleaseVersions(v *osvapi.OsvVulnerability) []string {
 }
 
 // EarliestReleaseVersion returns the lexicographically smallest version collected from the vulnerability.
-// It falls back to empty string if no versions are available.
 func EarliestReleaseVersion(v *osvapi.OsvVulnerability) string {
 	releases := CollectReleaseVersions(v)
 	if len(releases) == 0 {

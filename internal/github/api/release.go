@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github"
+	gh "github.com/malsuke/govs/internal/github/domain"
 )
 
 type ReleaseListOptions struct {
