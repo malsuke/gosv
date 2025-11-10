@@ -1,33 +1,18 @@
-package vuln
+package service
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github"
 	ghapi "github.com/malsuke/govs/internal/github/api"
-	vulnosv "github.com/malsuke/govs/internal/osv"
+	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
+	osvdomain "github.com/malsuke/govs/internal/osv/domain"
+	vulndomain "github.com/malsuke/govs/internal/vuln/domain"
 )
 
-type Predicted struct {
-	Introduced *Introduced
-	Fixed      *Fixed
-	CommitHash string
-}
-
-type Introduced struct {
-	CommitHash *string
-	PR         *github.PullRequest
-}
-
-type Fixed struct {
-	CommitHash *string
-	PR         *github.PullRequest
-}
-
-func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository, v *osvapi.OsvVulnerability) (*Predicted, error) {
+func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository, v *osvapi.OsvVulnerability) (*vulndomain.Predicted, error) {
 	if v == nil {
 		return nil, fmt.Errorf("vulnerability is nil")
 	}
@@ -35,17 +20,17 @@ func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository,
 		return nil, fmt.Errorf("nil context provided")
 	}
 
-	predicted := &Predicted{}
+	predicted := &vulndomain.Predicted{}
 
 	if v.Affected == nil || len(*v.Affected) == 0 {
 		return predicted, nil
 	}
 
-	introduced := vulnosv.ExtractIntroducedCommit(v)
-	fixed := vulnosv.ExtractFixedCommit(v)
+	introduced := osvdomain.ExtractIntroducedCommit(v)
+	fixed := osvdomain.ExtractFixedCommit(v)
 
 	if introduced != "" {
-		predicted.Introduced = &Introduced{CommitHash: &introduced}
+		predicted.Introduced = &vulndomain.Introduced{CommitHash: &introduced}
 		if client != nil {
 			if pr, err := resolvePR(ctx, client, repo, introduced); err == nil {
 				predicted.Introduced.PR = pr
@@ -55,7 +40,7 @@ func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository,
 	}
 
 	if fixed != "" {
-		predicted.Fixed = &Fixed{CommitHash: &fixed}
+		predicted.Fixed = &vulndomain.Fixed{CommitHash: &fixed}
 		if client != nil {
 			if pr, err := resolvePR(ctx, client, repo, fixed); err == nil {
 				predicted.Fixed.PR = pr

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github"
+	gh "github.com/malsuke/govs/internal/github/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

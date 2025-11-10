@@ -1,13 +1,13 @@
-package misc
+package domain
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github"
-	vulnosv "github.com/malsuke/govs/internal/osv"
+	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
+	osvdomain "github.com/malsuke/govs/internal/osv/domain"
 )
 
 func FindPreviousRelease(vulnerability *osvapi.OsvVulnerability, repo *gh.Repository) (*github.RepositoryRelease, error) {
@@ -21,7 +21,7 @@ func FindPreviousRelease(vulnerability *osvapi.OsvVulnerability, repo *gh.Reposi
 		return nil, fmt.Errorf("repository has no releases")
 	}
 
-	affectedVersions := vulnosv.CollectReleaseVersions(vulnerability)
+	affectedVersions := osvdomain.CollectReleaseVersions(vulnerability)
 	if len(affectedVersions) == 0 {
 		return nil, fmt.Errorf("vulnerability has no affected versions")
 	}

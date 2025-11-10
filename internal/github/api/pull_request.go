@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github"
+	gh "github.com/malsuke/govs/internal/github/domain"
 )
 
 func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, repo gh.Repository, commitHash string) (int, error) {

@@ -1,4 +1,4 @@
-package osv
+package domain
 
 import (
 	"testing"

@@ -1,10 +1,10 @@
-package misc
+package domain
 
 import (
 	"testing"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github"
+	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
