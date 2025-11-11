@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	gh "github.com/malsuke/govs/internal/github/domain"
-
 	"github.com/malsuke/govs/internal/common/cve"
 	"github.com/malsuke/govs/internal/common/ptr"
+	gh "github.com/malsuke/govs/internal/github/domain"
 )
 
 var OsvAPIBaseURL = "https://api.osv.dev"
