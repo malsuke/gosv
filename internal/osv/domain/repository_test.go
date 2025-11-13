@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/malsuke/govs/internal/common/ptr"
-	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,9 +21,10 @@ func TestExtractRepository_FromPackageName(t *testing.T) {
 		},
 	}
 
-	got, err := ExtractRepository(v)
+	owner, name, err := ExtractRepository(v)
 	assert.NoError(t, err)
-	assert.Equal(t, gh.Repository{Owner: "owner", Name: "repo"}, got)
+	assert.Equal(t, "owner", owner)
+	assert.Equal(t, "repo", name)
 }
 
 func TestExtractRepository_FromRangeRepo(t *testing.T) {
@@ -39,14 +39,15 @@ func TestExtractRepository_FromRangeRepo(t *testing.T) {
 		},
 	}
 
-	got, err := ExtractRepository(v)
+	owner, name, err := ExtractRepository(v)
 	assert.NoError(t, err)
-	assert.Equal(t, gh.Repository{Owner: "owner", Name: "repo"}, got)
+	assert.Equal(t, "owner", owner)
+	assert.Equal(t, "repo", name)
 }
 
 func TestExtractRepository_NotFound(t *testing.T) {
 	v := &osvapi.OsvVulnerability{}
 
-	_, err := ExtractRepository(v)
+	_, _, err := ExtractRepository(v)
 	assert.Error(t, err)
 }

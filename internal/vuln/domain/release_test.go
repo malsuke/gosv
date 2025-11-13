@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
@@ -18,16 +17,12 @@ func TestFindPreviousRelease(t *testing.T) {
 		},
 	}
 
-	repo := &gh.Repository{
-		Owner: "owner",
-		Name:  "repo",
-		Releases: []*github.RepositoryRelease{
-			{TagName: github.Ptr("v1.1.0")},
-			{TagName: github.Ptr("1.0.0")},
-		},
+	releases := []*github.RepositoryRelease{
+		{TagName: github.Ptr("v1.1.0")},
+		{TagName: github.Ptr("1.0.0")},
 	}
 
-	prev, err := FindPreviousRelease(v, repo)
+	prev, err := FindPreviousRelease(v, releases)
 	if err != nil {
 		t.Fatalf("FindPreviousRelease() returned unexpected error: %v", err)
 	}
@@ -49,15 +44,11 @@ func TestFindPreviousRelease_NoMatchingRelease(t *testing.T) {
 		},
 	}
 
-	repo := &gh.Repository{
-		Owner: "owner",
-		Name:  "repo",
-		Releases: []*github.RepositoryRelease{
-			{TagName: github.Ptr("v1.1.0")},
-		},
+	releases := []*github.RepositoryRelease{
+		{TagName: github.Ptr("v1.1.0")},
 	}
 
-	if prev, err := FindPreviousRelease(v, repo); err == nil || prev != nil {
+	if prev, err := FindPreviousRelease(v, releases); err == nil || prev != nil {
 		t.Fatalf("FindPreviousRelease() = (%v, %v), want (nil, error)", prev, err)
 	}
 }

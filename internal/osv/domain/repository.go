@@ -3,75 +3,75 @@ package domain
 import (
 	"fmt"
 
-	gh "github.com/malsuke/govs/internal/github/domain"
+	"github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 )
 
 // ExtractRepository pulls the first GitHub repository found in the vulnerability metadata.
-func ExtractRepository(v *osvapi.OsvVulnerability) (gh.Repository, error) {
+func ExtractRepository(v *osvapi.OsvVulnerability) (string, string, error) {
 	if v == nil {
-		return gh.Repository{}, fmt.Errorf("vulnerability is nil")
+		return "", "", fmt.Errorf("vulnerability is nil")
 	}
 
 	if v.Affected != nil {
 		for _, affected := range *v.Affected {
-			if repo, ok := repositoryFromAffected(&affected); ok {
-				return repo, nil
+			if owner, name, ok := repositoryFromAffected(&affected); ok {
+				return owner, name, nil
 			}
 		}
 	}
 
-	return gh.Repository{}, fmt.Errorf("repository information not found in vulnerability %q", safeVulnerabilityID(v))
+	return "", "", fmt.Errorf("repository information not found in vulnerability %q", safeVulnerabilityID(v))
 }
 
-func repositoryFromAffected(affected *osvapi.OsvAffected) (gh.Repository, bool) {
+func repositoryFromAffected(affected *osvapi.OsvAffected) (string, string, bool) {
 	if affected == nil {
-		return gh.Repository{}, false
+		return "", "", false
 	}
 
-	if repo, ok := repositoryFromPackage(affected.Package); ok {
-		return repo, true
+	if owner, name, ok := repositoryFromPackage(affected.Package); ok {
+		return owner, name, true
 	}
 
 	if affected.Ranges != nil {
 		for _, r := range *affected.Ranges {
-			if repo, ok := repositoryFromRange(&r); ok {
-				return repo, true
+			if owner, name, ok := repositoryFromRange(&r); ok {
+				return owner, name, true
 			}
 		}
 	}
 
-	return gh.Repository{}, false
+	return "", "", false
 }
 
-func repositoryFromPackage(pkg *osvapi.OsvPackage) (gh.Repository, bool) {
+func repositoryFromPackage(pkg *osvapi.OsvPackage) (string, string, bool) {
 	if pkg == nil || pkg.Name == nil {
-		return gh.Repository{}, false
+		return "", "", false
 	}
 
 	if pkg.Ecosystem != nil && *pkg.Ecosystem != "GIT" {
-		return gh.Repository{}, false
+		return "", "", false
 	}
 
-	repo, err := gh.ParseRepository(*pkg.Name)
+	owner, name, err := domain.ParseRepository(*pkg.Name)
 	if err != nil {
-		return gh.Repository{}, false
+		return "", "", false
 	}
 
-	return repo, true
+	return owner, name, true
 }
 
-func repositoryFromRange(r *osvapi.OsvRange) (gh.Repository, bool) {
+func repositoryFromRange(r *osvapi.OsvRange) (string, string, bool) {
 	if r == nil || r.Repo == nil {
-		return gh.Repository{}, false
+		return "", "", false
 	}
 
-	repo, err := gh.ParseRepository(*r.Repo)
+	owner, name, err := domain.ParseRepository(*r.Repo)
 	if err != nil {
-		return gh.Repository{}, false
+		return "", "", false
 	}
 
-	return repo, true
+	return owner, name, true
 }
 
 func safeVulnerabilityID(v *osvapi.OsvVulnerability) string {

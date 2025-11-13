@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,7 +79,7 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 			handler:       nil,
 			wantPRID:      0,
 			wantErr:       true,
-			wantErrString: "invalid GitHub repository URL: https://github.com/owner",
+			wantErrString: "repository reference must contain owner and name",
 		},
 		{
 			name:       "github api error",
@@ -218,7 +217,6 @@ func TestGetPullRequestIDFromCommitHash(t *testing.T) {
 
 func TestClientGetPullRequestNumberByCommit(t *testing.T) {
 	ctx := context.Background()
-	repo := gh.Repository{Owner: "owner", Name: "repo"}
 
 	t.Run("success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +235,10 @@ func TestClientGetPullRequestNumberByCommit(t *testing.T) {
 		require.NoError(t, err)
 		client.BaseURL = baseURL
 
-		number, err := NewClientFromGitHubClient(client).GetPullRequestNumberByCommit(ctx, repo, "hash")
+		apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+		require.NoError(t, err)
+
+		number, err := apiClient.GetPullRequestNumberByCommit(ctx, "hash")
 		require.NoError(t, err)
 		assert.Equal(t, 42, number)
 	})
@@ -256,30 +257,41 @@ func TestClientGetPullRequestNumberByCommit(t *testing.T) {
 		require.NoError(t, err)
 		client.BaseURL = baseURL
 
-		_, err = NewClientFromGitHubClient(client).GetPullRequestNumberByCommit(ctx, repo, "hash")
+		apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+		require.NoError(t, err)
+
+		_, err = apiClient.GetPullRequestNumberByCommit(ctx, "hash")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "no pull request found for commit hash")
 	})
 
 	t.Run("nil context", func(t *testing.T) {
-		client := NewClient("", nil)
+		client, err := NewClient("", "owner/repo", nil)
+		require.NoError(t, err)
+
 		var nilCtx context.Context
-		_, err := client.GetPullRequestNumberByCommit(nilCtx, repo, "hash")
+		_, err = client.GetPullRequestNumberByCommit(nilCtx, "hash")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "nil context provided")
 	})
 
 	t.Run("nil client", func(t *testing.T) {
 		var client *Client
-		_, err := client.GetPullRequestNumberByCommit(ctx, repo, "hash")
+		_, err := client.GetPullRequestNumberByCommit(ctx, "hash")
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "github client is not configured")
+	})
+
+	t.Run("missing repository context", func(t *testing.T) {
+		client := &Client{}
+		_, err := client.GetPullRequestNumberByCommit(ctx, "hash")
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "repository owner is empty")
 	})
 }
 
 func TestClientSearchMergedPullRequests(t *testing.T) {
 	ctx := context.Background()
-	repo := gh.Repository{Owner: "owner", Name: "repo"}
 	start := time.Date(2025, 10, 1, 10, 0, 0, 0, time.UTC)
 	end := time.Date(2025, 11, 8, 12, 0, 0, 0, time.UTC)
 
@@ -312,8 +324,11 @@ func TestClientSearchMergedPullRequests(t *testing.T) {
 		require.NoError(t, err)
 		client.BaseURL = baseURL
 
-		items, err := NewClientFromGitHubClient(client).
-			SearchMergedPullRequests(ctx, repo, start, end)
+		apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+		require.NoError(t, err)
+
+		items, err := apiClient.
+			SearchMergedPullRequests(ctx, start, end)
 
 		require.NoError(t, err)
 		require.Len(t, items, 1)
@@ -334,8 +349,11 @@ func TestClientSearchMergedPullRequests(t *testing.T) {
 		require.NoError(t, err)
 		client.BaseURL = baseURL
 
-		_, err = NewClientFromGitHubClient(client).
-			SearchMergedPullRequests(ctx, repo, start, end)
+		apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+		require.NoError(t, err)
+
+		_, err = apiClient.
+			SearchMergedPullRequests(ctx, start, end)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to search merged pull requests")
@@ -354,45 +372,51 @@ func TestClientSearchMergedPullRequests(t *testing.T) {
 		require.NoError(t, err)
 		client.BaseURL = baseURL
 
-		items, err := NewClientFromGitHubClient(client).
-			SearchMergedPullRequests(ctx, repo, start, end)
+		apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+		require.NoError(t, err)
+
+		items, err := apiClient.
+			SearchMergedPullRequests(ctx, start, end)
 
 		require.NoError(t, err)
 		assert.Nil(t, items)
 	})
 
 	t.Run("nil context", func(t *testing.T) {
-		client := NewClient("", nil)
+		client, err := NewClient("", "owner/repo", nil)
+		require.NoError(t, err)
 		var nilCtx context.Context
-		_, err := client.SearchMergedPullRequests(nilCtx, repo, start, end)
+		_, err = client.SearchMergedPullRequests(nilCtx, start, end)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "nil context provided")
 	})
 
 	t.Run("nil client", func(t *testing.T) {
 		var client *Client
-		_, err := client.SearchMergedPullRequests(ctx, repo, start, end)
+		_, err := client.SearchMergedPullRequests(ctx, start, end)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "github client is not configured")
 	})
 
-	t.Run("invalid repository", func(t *testing.T) {
-		client := NewClient("", nil)
-		_, err := client.SearchMergedPullRequests(ctx, gh.Repository{}, start, end)
+	t.Run("missing repository context", func(t *testing.T) {
+		client := &Client{}
+		_, err := client.SearchMergedPullRequests(ctx, start, end)
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "repository owner and name must be provided")
+		assert.ErrorContains(t, err, "repository owner is empty")
 	})
 
 	t.Run("missing time range", func(t *testing.T) {
-		client := NewClient("", nil)
-		_, err := client.SearchMergedPullRequests(ctx, repo, time.Time{}, end)
+		client, err := NewClient("", "owner/repo", nil)
+		require.NoError(t, err)
+		_, err = client.SearchMergedPullRequests(ctx, time.Time{}, end)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "time range must be provided")
 	})
 
 	t.Run("end before start", func(t *testing.T) {
-		client := NewClient("", nil)
-		_, err := client.SearchMergedPullRequests(ctx, repo, end, start)
+		client, err := NewClient("", "owner/repo", nil)
+		require.NoError(t, err)
+		_, err = client.SearchMergedPullRequests(ctx, end, start)
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "end time must not be before start time")
 	})

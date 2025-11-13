@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -211,14 +210,15 @@ func TestGetReleaseList(t *testing.T) {
 				client.BaseURL = baseURL
 			}
 
-			repo := &gh.Repository{Owner: "owner", Name: "repo"}
 			opts := ReleaseListOptions{}
 			if tt.opts != nil {
 				opts = *tt.opts
 			}
 
-			releases, err := NewClientFromGitHubClient(client).
-				ListReleases(context.Background(), repo, opts)
+			apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+			require.NoError(t, err)
+
+			releases, err := apiClient.ListReleases(context.Background(), opts)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -227,9 +227,7 @@ func TestGetReleaseList(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.NotNil(t, repo.Releases)
 			assert.Len(t, releases, tt.wantReleaseCount)
-			assert.Len(t, repo.Releases, len(releases))
 
 			if tt.wantReleaseCount > 0 {
 				hasPreRelease := false
@@ -243,13 +241,6 @@ func TestGetReleaseList(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("repository is nil", func(t *testing.T) {
-		client := NewClient("", nil)
-		_, err := client.ListReleases(context.Background(), nil, ReleaseListOptions{})
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "repository is nil")
-	})
 }
 
 func TestGetStableReleaseList(t *testing.T) {
@@ -346,10 +337,10 @@ func TestGetStableReleaseList(t *testing.T) {
 				client.BaseURL = baseURL
 			}
 
-			repo := &gh.Repository{Owner: "owner", Name: "repo"}
+			apiClient, err := NewClientFromGitHubClient("owner", "repo", client)
+			require.NoError(t, err)
 
-			releases, err := NewClientFromGitHubClient(client).
-				ListStableReleases(context.Background(), repo, github.ListOptions{})
+			releases, err := apiClient.ListStableReleases(context.Background(), github.ListOptions{})
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -358,9 +349,7 @@ func TestGetStableReleaseList(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.NotNil(t, repo.Releases)
 			assert.Len(t, releases, tt.wantReleaseCount)
-			assert.Len(t, repo.Releases, len(releases))
 
 			for i, release := range releases {
 				if release.Prerelease != nil && *release.Prerelease {
@@ -369,11 +358,4 @@ func TestGetStableReleaseList(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("repository is nil", func(t *testing.T) {
-		client := NewClient("", nil)
-		_, err := client.ListStableReleases(context.Background(), nil, github.ListOptions{})
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "repository is nil")
-	})
 }

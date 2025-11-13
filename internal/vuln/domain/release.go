@@ -5,20 +5,16 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v77/github"
-	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 	osvdomain "github.com/malsuke/govs/internal/osv/domain"
 )
 
-func FindPreviousRelease(vulnerability *osvapi.OsvVulnerability, repo *gh.Repository) (*github.RepositoryRelease, error) {
+func FindPreviousRelease(vulnerability *osvapi.OsvVulnerability, releases []*github.RepositoryRelease) (*github.RepositoryRelease, error) {
 	if vulnerability == nil {
 		return nil, fmt.Errorf("vulnerability is nil")
 	}
-	if repo == nil {
-		return nil, fmt.Errorf("repository is nil")
-	}
-	if len(repo.Releases) == 0 {
-		return nil, fmt.Errorf("repository has no releases")
+	if len(releases) == 0 {
+		return nil, fmt.Errorf("releases are empty")
 	}
 
 	affectedVersions := osvdomain.CollectReleaseVersions(vulnerability)
@@ -27,7 +23,7 @@ func FindPreviousRelease(vulnerability *osvapi.OsvVulnerability, repo *gh.Reposi
 	}
 
 	for _, version := range affectedVersions {
-		if prev := previousRelease(repo.Releases, version); prev != nil {
+		if prev := previousRelease(releases, version); prev != nil {
 			return prev, nil
 		}
 	}

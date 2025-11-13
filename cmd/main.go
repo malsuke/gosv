@@ -1,54 +1,23 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"log"
-	"time"
 
-	ghapi "github.com/malsuke/govs/internal/github/api"
-	"github.com/malsuke/govs/internal/github/domain"
-	"github.com/malsuke/govs/pkg/vuln"
+	"github.com/malsuke/govs/pkg/vuln/domain"
 )
 
 func main() {
-	ctx := context.Background()
-	repoURL := "https://github.com/kubernetes/kubernetes"
-	cveIDs, err := vuln.ListCVEIDsByGitHubURL(ctx, repoURL)
+	vuln, err := domain.GetVulnerabilityByCVEID("CVE-2023-2727")
 	if err != nil {
-		log.Fatalf("failed to list CVEs: %v", err)
+		log.Fatalf("failed to get vulnerability: %v", err)
 	}
-	fmt.Println(cveIDs)
-
-	layout := "Jan 2, 2006"
-	start := "Dec 10, 2016"
-	end := "Dec 13, 2016"
-
-	startDate, err := time.Parse(layout, start)
+	json, err := json.Marshal(vuln)
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to marshal vulnerability: %v", err)
 	}
-
-	endDate, err := time.Parse(layout, end)
-	if err != nil {
-		panic(err)
-	}
-
-	repo := domain.Repository{
-		Owner: "kubernetes",
-		Name:  "kubernetes",
-	}
-
-	items, err := ghapi.NewClient("", nil).SearchMergedPullRequests(ctx, repo, startDate, endDate)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(items)
-
-	for _, item := range items {
-		fmt.Println(item.GetNumber())
-	}
+	fmt.Println(string(json))
 }
 
 // import (

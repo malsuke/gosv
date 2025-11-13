@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/malsuke/govs/internal/common/ptr"
-	gh "github.com/malsuke/govs/internal/github/domain"
 )
 
 func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {
@@ -20,13 +19,6 @@ func withTempOSVServer(t *testing.T, handler http.HandlerFunc) func() {
 
 	return func() {
 		OsvAPIBaseURL = orig
-	}
-}
-
-func testRepository() gh.Repository {
-	return gh.Repository{
-		Owner: "example",
-		Name:  "repo",
 	}
 }
 
@@ -100,9 +92,8 @@ func TestListCVEIDsByRepository_Success(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	repo := testRepository()
 
-	got, err := ListCVEIDsByRepository(ctx, repo)
+	got, err := ListCVEIDsByRepository(ctx, "example", "repo")
 	if err != nil {
 		t.Fatalf("ListCVEIDsByRepository() error = %v", err)
 	}
@@ -134,9 +125,8 @@ func TestListCVEIDsByRepository_Empty(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	repo := testRepository()
 
-	got, err := ListCVEIDsByRepository(ctx, repo)
+	got, err := ListCVEIDsByRepository(ctx, "example", "repo")
 	if err != nil {
 		t.Fatalf("ListCVEIDsByRepository() error = %v", err)
 	}
@@ -152,9 +142,8 @@ func TestListCVEIDsByRepository_APIError(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	repo := testRepository()
 
-	if _, err := ListCVEIDsByRepository(ctx, repo); err == nil {
+	if _, err := ListCVEIDsByRepository(ctx, "example", "repo"); err == nil {
 		t.Fatalf("ListCVEIDsByRepository() error = nil, want non-nil")
 	}
 }
