@@ -11,12 +11,6 @@ import (
 )
 
 func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, commitHash string) (int, error) {
-	if ctx == nil {
-		return 0, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return 0, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return 0, err
 	}
@@ -37,12 +31,6 @@ func (c *Client) GetPullRequestNumberByCommit(ctx context.Context, commitHash st
 }
 
 func (c *Client) SearchMergedPullRequests(ctx context.Context, start time.Time, end time.Time) ([]*github.Issue, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}
@@ -72,12 +60,6 @@ func (c *Client) SearchMergedPullRequests(ctx context.Context, start time.Time, 
 }
 
 func (c *Client) GetPullRequest(ctx context.Context, prNumber int) (*github.PullRequest, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}
@@ -91,12 +73,6 @@ func (c *Client) GetPullRequest(ctx context.Context, prNumber int) (*github.Pull
 }
 
 func (c *Client) GetPullRequestsFromIssues(ctx context.Context, issues []*github.Issue) ([]*github.PullRequest, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}
@@ -119,12 +95,6 @@ func (c *Client) GetPullRequestsFromIssues(ctx context.Context, issues []*github
 }
 
 func (c *Client) GetCommitsFromPullRequests(ctx context.Context, prs []*github.PullRequest) ([]*github.Commit, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}

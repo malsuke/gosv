@@ -1,7 +1,6 @@
 package ghapi
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/google/go-github/v77/github"
@@ -46,15 +45,9 @@ func NewClientFromGitHubClient(owner, name string, client *github.Client) (*Clie
 }
 
 func (c *Client) GetGithubClient() *github.Client {
-	if c == nil {
-		return nil
-	}
 	return c.github
 }
 
 func (c *Client) ensureRepositoryContext() error {
-	if c == nil {
-		return fmt.Errorf("github client is nil")
-	}
 	return domain.ValidateRepository(c.Owner, c.Name)
 }

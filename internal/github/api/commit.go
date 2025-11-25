@@ -8,12 +8,6 @@ import (
 )
 
 func (c *Client) GetCommit(ctx context.Context, commitHash string) (*github.Commit, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}

@@ -9,12 +9,6 @@ import (
 )
 
 func (c *Client) GetRepository(ctx context.Context) (*github.Repository, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}
@@ -28,12 +22,6 @@ func (c *Client) GetRepository(ctx context.Context) (*github.Repository, error) 
 }
 
 func (c *Client) GetRepositoryWithReleases(ctx context.Context, opts *github.ListOptions) (*models.Repository, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
-	if c == nil || c.github == nil {
-		return nil, fmt.Errorf("github client is not configured")
-	}
 	if err := c.ensureRepositoryContext(); err != nil {
 		return nil, err
 	}
@@ -43,12 +31,7 @@ func (c *Client) GetRepositoryWithReleases(ctx context.Context, opts *github.Lis
 		return nil, err
 	}
 
-	listOpts := github.ListOptions{}
-	if opts != nil {
-		listOpts = *opts
-	}
-
-	releases, err := c.ListStableReleases(ctx, listOpts)
+	releases, err := c.ListAllStableReleases(ctx)
 	if err != nil {
 		return nil, err
 	}

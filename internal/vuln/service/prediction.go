@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/go-github/v77/github"
 	ghapi "github.com/malsuke/govs/internal/github/api"
@@ -12,12 +11,6 @@ import (
 )
 
 func NewPredicted(ctx context.Context, client *ghapi.Client, v *osvapi.OsvVulnerability) (*vulndomain.Predicted, error) {
-	if v == nil {
-		return nil, fmt.Errorf("vulnerability is nil")
-	}
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
 
 	predicted := &vulndomain.Predicted{}
 
@@ -51,9 +44,6 @@ func NewPredicted(ctx context.Context, client *ghapi.Client, v *osvapi.OsvVulner
 }
 
 func resolvePR(ctx context.Context, client *ghapi.Client, commit string) (*github.PullRequest, error) {
-	if client == nil {
-		return nil, fmt.Errorf("github client is nil")
-	}
 	number, err := client.GetPullRequestNumberByCommit(ctx, commit)
 	if err != nil {
 		return nil, err

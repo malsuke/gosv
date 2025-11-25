@@ -9,10 +9,6 @@ import (
 
 // ExtractRepository pulls the first GitHub repository found in the vulnerability metadata.
 func ExtractRepository(v *osvapi.OsvVulnerability) (string, string, error) {
-	if v == nil {
-		return "", "", fmt.Errorf("vulnerability is nil")
-	}
-
 	if v.Affected != nil {
 		for _, affected := range *v.Affected {
 			if owner, name, ok := repositoryFromAffected(&affected); ok {

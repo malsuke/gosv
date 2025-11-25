@@ -35,9 +35,6 @@ func ListCVEVulnerabilitiesByRepository(ctx context.Context, owner, name string)
 
 // GetVulnerabilityByCVE は CVE ID から脆弱性を取得する。
 func GetVulnerabilityByCVE(ctx context.Context, cveID string) (*OsvVulnerability, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("context must not be nil")
-	}
 	if !cve.IsValidCVEFormat(cveID) {
 		return nil, fmt.Errorf("invalid CVE format: %s", cveID)
 	}
@@ -102,9 +99,6 @@ func extractCVEFromAliases(aliases *[]string) string {
 }
 
 func fetchAffectedVulnerabilities(ctx context.Context, owner, name string) ([]OsvVulnerability, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("context must not be nil")
-	}
 	if err := domain.ValidateRepository(owner, name); err != nil {
 		return nil, err
 	}
