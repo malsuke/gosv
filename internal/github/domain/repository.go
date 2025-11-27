@@ -4,52 +4,88 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-
-	"github.com/google/go-github/v77/github"
 )
 
-type Repository struct {
-	Owner    string
-	Name     string
-	Releases []*github.RepositoryRelease
-}
-
-func (r Repository) CanonicalGitURL() (string, error) {
-	if err := r.Validate(); err != nil {
-		return "", err
+// ParseRepository parses a repository reference such as:
+//   - owner/name
+//   - https://github.com/owner/name
+//   - git@github.com:owner/name.git
+//
+// It returns the owner and repository name.
+func ParseRepository(ref string) (string, string, error) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return "", "", fmt.Errorf("repository reference is empty")
 	}
-	return fmt.Sprintf("https://github.com/%s/%s", r.Owner, r.Name), nil
+
+	// Handle git@github.com:owner/name(.git)
+	if strings.HasPrefix(ref, "git@") {
+		parts := strings.SplitN(ref, ":", 2)
+		if len(parts) != 2 {
+			return "", "", fmt.Errorf("invalid repository reference: %s", ref)
+		}
+		ref = parts[1]
+	}
+
+	if strings.Contains(ref, "://") {
+		u, err := url.Parse(ref)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid repository url: %w", err)
+		}
+		return ParseRepositoryURL(u)
+	}
+
+	owner, name, err := parseOwnerAndName(ref)
+	if err != nil {
+		return "", "", err
+	}
+	return owner, name, ValidateRepository(owner, name)
 }
 
-func (r Repository) Validate() error {
-	if strings.TrimSpace(r.Owner) == "" || strings.TrimSpace(r.Name) == "" {
-		return fmt.Errorf("repository owner and name must be provided")
+// ParseRepositoryURL extracts the owner and name from a GitHub URL.
+func ParseRepositoryURL(u *url.URL) (string, string, error) {
+	if u == nil {
+		return "", "", fmt.Errorf("url must not be nil")
+	}
+
+	// take path portion /owner/name(.git)
+	path := strings.Trim(u.Path, "/")
+	if path == "" {
+		return "", "", fmt.Errorf("repository path is empty in url %s", u.String())
+	}
+
+	owner, name, err := parseOwnerAndName(path)
+	if err != nil {
+		return "", "", err
+	}
+	return owner, name, ValidateRepository(owner, name)
+}
+
+// CanonicalGitURL returns the canonical HTTPS URL for a GitHub repository.
+func CanonicalGitURL(owner, name string) string {
+	return fmt.Sprintf("https://github.com/%s/%s", owner, name)
+}
+
+// ValidateRepository ensures owner and name are both non-empty.
+func ValidateRepository(owner, name string) error {
+	if strings.TrimSpace(owner) == "" {
+		return fmt.Errorf("repository owner is empty")
+	}
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("repository name is empty")
 	}
 	return nil
 }
 
-func ParseRepositoryURL(u *url.URL) (Repository, error) {
-	if u == nil {
-		return Repository{}, fmt.Errorf("invalid GitHub repository URL: <nil>")
-	}
-
-	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+func parseOwnerAndName(ref string) (string, string, error) {
+	ref = strings.TrimSuffix(ref, ".git")
+	parts := strings.Split(ref, "/")
 	if len(parts) < 2 {
-		return Repository{}, fmt.Errorf("invalid GitHub repository URL: %s", u.String())
+		return "", "", fmt.Errorf("repository reference must contain owner and name: %s", ref)
 	}
 
-	repo := strings.TrimSuffix(parts[1], ".git")
+	owner := strings.TrimSpace(parts[len(parts)-2])
+	name := strings.TrimSpace(parts[len(parts)-1])
 
-	return Repository{
-		Owner: parts[0],
-		Name:  repo,
-	}, nil
-}
-
-func ParseRepository(rawURL string) (Repository, error) {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return Repository{}, fmt.Errorf("failed to parse GitHub repository URL: %w", err)
-	}
-	return ParseRepositoryURL(parsed)
+	return owner, name, nil
 }

@@ -2,23 +2,15 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/go-github/v77/github"
 	ghapi "github.com/malsuke/govs/internal/github/api"
-	gh "github.com/malsuke/govs/internal/github/domain"
 	osvapi "github.com/malsuke/govs/internal/osv/api"
 	osvdomain "github.com/malsuke/govs/internal/osv/domain"
 	vulndomain "github.com/malsuke/govs/internal/vuln/domain"
 )
 
-func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository, v *osvapi.OsvVulnerability) (*vulndomain.Predicted, error) {
-	if v == nil {
-		return nil, fmt.Errorf("vulnerability is nil")
-	}
-	if ctx == nil {
-		return nil, fmt.Errorf("nil context provided")
-	}
+func NewPredicted(ctx context.Context, client *ghapi.Client, v *osvapi.OsvVulnerability) (*vulndomain.Predicted, error) {
 
 	predicted := &vulndomain.Predicted{}
 
@@ -32,7 +24,7 @@ func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository,
 	if introduced != "" {
 		predicted.Introduced = &vulndomain.Introduced{CommitHash: &introduced}
 		if client != nil {
-			if pr, err := resolvePR(ctx, client, repo, introduced); err == nil {
+			if pr, err := resolvePR(ctx, client, introduced); err == nil {
 				predicted.Introduced.PR = pr
 			}
 		}
@@ -42,7 +34,7 @@ func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository,
 	if fixed != "" {
 		predicted.Fixed = &vulndomain.Fixed{CommitHash: &fixed}
 		if client != nil {
-			if pr, err := resolvePR(ctx, client, repo, fixed); err == nil {
+			if pr, err := resolvePR(ctx, client, fixed); err == nil {
 				predicted.Fixed.PR = pr
 			}
 		}
@@ -51,16 +43,13 @@ func NewPredicted(ctx context.Context, client *ghapi.Client, repo gh.Repository,
 	return predicted, nil
 }
 
-func resolvePR(ctx context.Context, client *ghapi.Client, repo gh.Repository, commit string) (*github.PullRequest, error) {
-	if client == nil {
-		return nil, fmt.Errorf("github client is nil")
-	}
-	number, err := client.GetPullRequestNumberByCommit(ctx, repo, commit)
+func resolvePR(ctx context.Context, client *ghapi.Client, commit string) (*github.PullRequest, error) {
+	number, err := client.GetPullRequestNumberByCommit(ctx, commit)
 	if err != nil {
 		return nil, err
 	}
 
-	pr, _, err := client.GetGithubClient().PullRequests.Get(ctx, repo.Owner, repo.Name, number)
+	pr, _, err := client.GetGithubClient().PullRequests.Get(ctx, client.Owner, client.Name, number)
 	if err != nil {
 		return nil, err
 	}

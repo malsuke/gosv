@@ -4,17 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	gh "github.com/malsuke/govs/internal/github/domain"
-
 	"github.com/malsuke/govs/internal/common/cve"
 	"github.com/malsuke/govs/internal/common/ptr"
+	"github.com/malsuke/govs/internal/github/domain"
 )
 
 var OsvAPIBaseURL = "https://api.osv.dev"
 
 // ListCVEIDsByRepository は GitHub リポジトリに紐づく CVE ID の一覧を取得する。
-func ListCVEIDsByRepository(ctx context.Context, repo gh.Repository) ([]string, error) {
-	vulns, err := listVulnerabilitiesWithCVE(ctx, repo)
+func ListCVEIDsByRepository(ctx context.Context, owner, name string) ([]string, error) {
+	vulns, err := listVulnerabilitiesWithCVE(ctx, owner, name)
 	if err != nil {
 		return nil, err
 	}
@@ -30,15 +29,12 @@ func ListCVEIDsByRepository(ctx context.Context, repo gh.Repository) ([]string, 
 }
 
 // ListCVEVulnerabilitiesByRepository は GitHub リポジトリに紐づく CVE 形式の OSV 脆弱性一覧を取得する。
-func ListCVEVulnerabilitiesByRepository(ctx context.Context, repo gh.Repository) ([]OsvVulnerability, error) {
-	return listVulnerabilitiesWithCVE(ctx, repo)
+func ListCVEVulnerabilitiesByRepository(ctx context.Context, owner, name string) ([]OsvVulnerability, error) {
+	return listVulnerabilitiesWithCVE(ctx, owner, name)
 }
 
 // GetVulnerabilityByCVE は CVE ID から脆弱性を取得する。
 func GetVulnerabilityByCVE(ctx context.Context, cveID string) (*OsvVulnerability, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("context must not be nil")
-	}
 	if !cve.IsValidCVEFormat(cveID) {
 		return nil, fmt.Errorf("invalid CVE format: %s", cveID)
 	}
@@ -74,8 +70,8 @@ func ExtractCVEFromVulnerability(v *OsvVulnerability) string {
 	return extractCVEFromAliases(v.Aliases)
 }
 
-func listVulnerabilitiesWithCVE(ctx context.Context, repo gh.Repository) ([]OsvVulnerability, error) {
-	vulns, err := fetchAffectedVulnerabilities(ctx, repo)
+func listVulnerabilitiesWithCVE(ctx context.Context, owner, name string) ([]OsvVulnerability, error) {
+	vulns, err := fetchAffectedVulnerabilities(ctx, owner, name)
 	if err != nil {
 		return nil, err
 	}
@@ -102,15 +98,12 @@ func extractCVEFromAliases(aliases *[]string) string {
 	return ""
 }
 
-func fetchAffectedVulnerabilities(ctx context.Context, repo gh.Repository) ([]OsvVulnerability, error) {
-	if ctx == nil {
-		return nil, fmt.Errorf("context must not be nil")
-	}
-
-	canonicalURL, err := repo.CanonicalGitURL()
-	if err != nil {
+func fetchAffectedVulnerabilities(ctx context.Context, owner, name string) ([]OsvVulnerability, error) {
+	if err := domain.ValidateRepository(owner, name); err != nil {
 		return nil, err
 	}
+
+	canonicalURL := domain.CanonicalGitURL(owner, name)
 
 	client, err := NewClientWithResponses(OsvAPIBaseURL)
 	if err != nil {
